@@ -1,0 +1,25 @@
+# Example values for a local Terraform execution.
+# GitHub Actions supplies these variables through TF_VAR_* and -var arguments.
+
+# Vehicles
+vehicles_image_uri = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/prices-car-watch-vehicles:v0.1.0"
+vehicle_provider   = "webmotors"
+
+# Subscriptions
+subscriptions_image_uri = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/prices-car-watch-subscriptions:v0.1.0"
+
+# Monitoring
+monitoring_image_uri = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/prices-car-watch-monitoring:v0.1.0"
+
+# Notifications
+notifications_image_uri = "123456789012.dkr.ecr.sa-east-1.amazonaws.com/prices-car-watch-notifications:v0.1.0"
+
+# Frontend
+frontend_base_url = "https://d9rwbsu5ghttj.cloudfront.net"
+
+# Mailjet notification provider.
+# The sender email should be replaced locally or supplied as a GitHub Secret.
+mailjet_confirmation_template_id = 123456
+mailjet_new_listings_template_id = 123456
+mailjet_sender_email             = "noreply@example.com"
+mailjet_sender_name              = "Price Cars Watch"

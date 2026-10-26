@@ -1,0 +1,1 @@
+"""Mailjet email provider adapters."""

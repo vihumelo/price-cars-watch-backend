@@ -1,0 +1,4 @@
+httpx
+structlog
+aws-lambda-powertools
+pytest

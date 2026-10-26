@@ -1,0 +1,55 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Prices Car Watch Subscriptions API",
+    "version": "1.0.0",
+    "description": "Creates and manages vehicle listing-monitoring subscriptions."
+  },
+  "tags": [
+    {"name": "Subscriptions", "description": "Create, confirm, inspect, and cancel subscriptions."},
+    {"name": "Monitoring Integration", "description": "Internal AWS IAM operations for monitoring."}
+  ],
+  "paths": {
+    "/subscriptions": {
+      "post": {
+        "tags": ["Subscriptions"], "summary": "Create or refresh a listing-monitoring subscription", "operationId": "createSubscription",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateSubscriptionRequest"}}}},
+        "responses": {"202": {"description": "Accepted.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Accepted"}}}}, "400": {"$ref": "#/components/responses/BadRequest"}, "500": {"$ref": "#/components/responses/InternalError"}}
+      }
+    },
+    "/subscriptions/{subscriptionId}/confirm": {
+      "get": {
+        "tags": ["Subscriptions"], "summary": "Confirm subscription and capture its listing baseline", "operationId": "confirmSubscription",
+        "parameters": [{"$ref": "#/components/parameters/SubscriptionId"}, {"$ref": "#/components/parameters/ConfirmationToken"}],
+        "responses": {"200": {"description": "Subscription activated."}, "400": {"$ref": "#/components/responses/InvalidConfirmation"}, "502": {"$ref": "#/components/responses/VehiclesUnavailable"}, "500": {"$ref": "#/components/responses/InternalError"}}
+      }
+    },
+    "/subscriptions/{subscriptionId}": {
+      "get": {"tags": ["Subscriptions"], "summary": "Get subscription", "parameters": [{"$ref": "#/components/parameters/SubscriptionId"}, {"$ref": "#/components/parameters/ManagementToken"}], "responses": {"200": {"description": "Subscription details.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Subscription"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}}},
+      "delete": {"tags": ["Subscriptions"], "summary": "Cancel subscription", "parameters": [{"$ref": "#/components/parameters/SubscriptionId"}, {"$ref": "#/components/parameters/ManagementToken"}], "responses": {"204": {"description": "Cancelled."}, "401": {"$ref": "#/components/responses/Unauthorized"}}}
+    },
+    "/internal/subscriptions/monitoring": {
+      "get": {"tags": ["Monitoring Integration"], "summary": "List active subscriptions", "security": [{"AwsIam": []}], "responses": {"200": {"description": "Active subscriptions.", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/MonitoringSubscription"}}}}}}}
+    },
+    "/internal/subscriptions/{subscriptionId}/listings": {
+      "patch": {"tags": ["Monitoring Integration"], "summary": "Update the seen-listings set", "security": [{"AwsIam": []}], "parameters": [{"$ref": "#/components/parameters/SubscriptionId"}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SeenListingsUpdate"}}}}, "responses": {"204": {"description": "Seen listings saved."}, "400": {"$ref": "#/components/responses/BadRequest"}, "404": {"$ref": "#/components/responses/NotFound"}}}
+    }
+  },
+  "components": {
+    "parameters": {
+      "SubscriptionId": {"name": "subscriptionId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "ConfirmationToken": {"name": "token", "in": "query", "required": true, "schema": {"type": "string", "minLength": 1}},
+      "ManagementToken": {"name": "token", "in": "query", "required": true, "schema": {"type": "string", "minLength": 1}}
+    },
+    "schemas": {
+      "CreateSubscriptionRequest": {"type": "object", "additionalProperties": false, "required": ["email", "makeId", "modelId", "versionId", "yearId", "state", "city", "latitude", "longitude", "radiusKm"], "properties": {"email": {"type": "string", "format": "email"}, "makeId": {"type": "string"}, "modelId": {"type": "string"}, "versionId": {"type": "string"}, "yearId": {"type": "string"}, "state": {"type": "string", "example": "São Paulo"}, "city": {"type": "string", "example": "Valinhos"}, "radiusKm": {"type": "number", "minimum": 0, "example": 25}}},
+      "Accepted": {"type": "object", "required": ["status"], "properties": {"status": {"type": "string", "enum": ["accepted"]}}},
+      "Subscription": {"type": "object", "required": ["id", "status", "email", "seenListings"], "properties": {"id": {"type": "string"}, "status": {"type": "string", "enum": ["pending_confirmation", "active", "cancelled"]}, "email": {"type": "string"}, "seenListings": {"type": "array", "items": {"type": "string"}}, "baselineCapturedAt": {"type": "string", "format": "date-time"}}},
+      "MonitoringSubscription": {"type": "object", "required": ["id", "makeId", "modelId", "versionId", "yearId", "state", "city", "latitude", "longitude", "radiusKm", "seenListings"], "properties": {"id": {"type": "string"}, "makeId": {"type": "string"}, "modelId": {"type": "string"}, "versionId": {"type": "string"}, "yearId": {"type": "string"}, "state": {"type": "string"}, "city": {"type": "string"}, "latitude": {"type": "number"}, "longitude": {"type": "number"}, "radiusKm": {"type": "number"}, "seenListings": {"type": "array", "items": {"type": "string"}}}},
+      "SeenListingsUpdate": {"type": "object", "additionalProperties": false, "required": ["seenListings", "lastCheckedAt"], "properties": {"seenListings": {"type": "array", "items": {"type": "string", "minLength": 1}}, "lastCheckedAt": {"type": "string", "format": "date-time"}}},
+      "Error": {"type": "object", "required": ["code", "message"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}}}
+    },
+    "securitySchemes": {"AwsIam": {"type": "http", "scheme": "aws4-hmac-sha256"}},
+    "responses": {"BadRequest": {"description": "Invalid request.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}, "InvalidConfirmation": {"description": "Invalid confirmation link."}, "VehiclesUnavailable": {"description": "Vehicles service unavailable."}, "Unauthorized": {"description": "Invalid management token."}, "NotFound": {"description": "Subscription not found."}, "InternalError": {"description": "Internal server error."}}
+  }
+}

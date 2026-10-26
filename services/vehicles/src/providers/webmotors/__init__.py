@@ -1,0 +1,1 @@
+"""Webmotors vehicle provider adapter."""

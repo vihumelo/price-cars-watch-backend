@@ -1,0 +1,340 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Prices Car Watch Vehicles API",
+    "version": "1.0.0",
+    "description": "Provider-neutral vehicle catalog and listing search API."
+  },
+  "tags": [
+    {
+      "name": "Vehicles",
+      "description": "Vehicle catalog lookup and normalized listing search."
+    }
+  ],
+  "paths": {
+    "/vehicles/makes": {
+      "get": {
+        "tags": ["Vehicles"],
+        "summary": "List vehicle makes",
+        "operationId": "listVehicleMakes",
+        "responses": {
+          "200": {
+            "description": "Available vehicle makes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/Option"}
+                }
+              }
+            }
+          },
+          "502": {"$ref": "#/components/responses/VehicleProviderUnavailable"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/vehicles/makes/{makeId}/models": {
+      "get": {
+        "tags": ["Vehicles"],
+        "summary": "List models by make",
+        "operationId": "listVehicleModels",
+        "parameters": [{"$ref": "#/components/parameters/MakeId"}],
+        "responses": {
+          "200": {
+            "description": "Models available for the make.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/Option"}
+                }
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/VehicleNotFound"},
+          "502": {"$ref": "#/components/responses/VehicleProviderUnavailable"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/vehicles/makes/{makeId}/models/{modelId}/versions": {
+      "get": {
+        "tags": ["Vehicles"],
+        "summary": "List versions by model",
+        "operationId": "listVehicleVersions",
+        "parameters": [
+          {"$ref": "#/components/parameters/MakeId"},
+          {"$ref": "#/components/parameters/ModelId"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions available for the model.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/Option"}
+                }
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/VehicleNotFound"},
+          "502": {"$ref": "#/components/responses/VehicleProviderUnavailable"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/vehicles/makes/{makeId}/models/{modelId}/versions/{versionId}/years": {
+      "get": {
+        "tags": ["Vehicles"],
+        "summary": "List years by version",
+        "operationId": "listVehicleYears",
+        "parameters": [
+          {"$ref": "#/components/parameters/MakeId"},
+          {"$ref": "#/components/parameters/ModelId"},
+          {"$ref": "#/components/parameters/VersionId"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Years available for the vehicle version.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/Option"}
+                }
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/VehicleNotFound"},
+          "502": {"$ref": "#/components/responses/VehicleProviderUnavailable"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/vehicles/makes/{makeId}/models/{modelId}/versions/{versionId}/years/{yearId}": {
+      "get": {
+        "tags": ["Vehicles"],
+        "summary": "Get the complete vehicle selection",
+        "operationId": "getVehicle",
+        "parameters": [
+          {"$ref": "#/components/parameters/MakeId"},
+          {"$ref": "#/components/parameters/ModelId"},
+          {"$ref": "#/components/parameters/VersionId"},
+          {"$ref": "#/components/parameters/YearId"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Normalized vehicle selection.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/VehicleSelection"},
+                "example": {
+                  "make": "FIAT",
+                  "model": "PULSE",
+                  "version": "1.3 FLEX DRIVE CVT",
+                  "year": "2023"
+                }
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/VehicleNotFound"},
+          "502": {"$ref": "#/components/responses/VehicleProviderUnavailable"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/internal/vehicles/listings": {
+      "post": {
+        "tags": ["Vehicles"],
+        "summary": "List current vehicle listings",
+        "operationId": "listCurrentVehicleListings",
+        "description": "Internal provider-neutral endpoint. Location criteria are optional. If coordinates are provided, latitude, longitude, and radiusKm must be provided together.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ListingSearch"},
+              "example": {
+                "makeId": "FIAT",
+                "modelId": "PULSE",
+                "versionId": "1.3 FLEX DRIVE CVT",
+                "yearId": "2023",
+                "state": "São Paulo",
+                "city": "Santo André",
+                "latitude": -23.66389,
+                "longitude": -46.53833,
+                "radiusKm": 25
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Normalized listings matching the vehicle and optional location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {"$ref": "#/components/schemas/Listing"}
+                }
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/InvalidRequest"},
+          "404": {"$ref": "#/components/responses/VehicleNotFound"},
+          "502": {"$ref": "#/components/responses/VehicleProviderUnavailable"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "MakeId": {
+        "name": "makeId",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "minLength": 1},
+        "example": "FIAT"
+      },
+      "ModelId": {
+        "name": "modelId",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "minLength": 1},
+        "example": "PULSE"
+      },
+      "VersionId": {
+        "name": "versionId",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "minLength": 1},
+        "example": "1.3 FLEX DRIVE CVT"
+      },
+      "YearId": {
+        "name": "yearId",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "minLength": 1},
+        "example": "2023"
+      }
+    },
+    "schemas": {
+      "Option": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"}
+        }
+      },
+      "VehicleSelection": {
+        "type": "object",
+        "required": ["make", "model", "version", "year"],
+        "additionalProperties": false,
+        "properties": {
+          "make": {"type": "string"},
+          "model": {"type": "string"},
+          "version": {"type": "string"},
+          "year": {"type": "string"}
+        }
+      },
+      "ListingLocation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "city": {"type": "string", "nullable": true},
+          "state": {"type": "string", "nullable": true},
+          "postalCode": {"type": "string", "nullable": true},
+          "latitude": {"type": "number", "format": "double", "minimum": -90, "maximum": 90, "nullable": true},
+          "longitude": {"type": "number", "format": "double", "minimum": -180, "maximum": 180, "nullable": true},
+          "radiusKm": {"type": "number", "minimum": 0, "nullable": true}
+        }
+      },
+      "ListingSearch": {
+        "type": "object",
+        "required": ["makeId", "modelId", "versionId", "yearId"],
+        "additionalProperties": false,
+        "description": "Vehicle identifiers plus optional listing location criteria.",
+        "properties": {
+          "makeId": {"type": "string", "minLength": 1},
+          "modelId": {"type": "string", "minLength": 1},
+          "versionId": {"type": "string", "minLength": 1},
+          "yearId": {"type": "string", "minLength": 1},
+          "city": {"type": "string", "nullable": true},
+          "state": {"type": "string", "nullable": true},
+          "postalCode": {"type": "string", "nullable": true},
+          "latitude": {"type": "number", "format": "double", "minimum": -90, "maximum": 90, "nullable": true},
+          "longitude": {"type": "number", "format": "double", "minimum": -180, "maximum": 180, "nullable": true},
+          "radiusKm": {"type": "number", "minimum": 0, "nullable": true}
+        }
+      },
+      "Listing": {
+        "type": "object",
+        "required": [
+          "id",
+          "provider",
+          "providerListingId",
+          "title",
+          "make",
+          "model",
+          "version",
+          "manufactureYear",
+          "modelYear",
+          "price"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "example": "webmotors:80947084"},
+          "provider": {"type": "string", "example": "webmotors"},
+          "providerListingId": {"type": "string", "example": "80947084"},
+          "title": {"type": "string"},
+          "make": {"type": "string"},
+          "model": {"type": "string"},
+          "version": {"type": "string"},
+          "manufactureYear": {"type": "string"},
+          "modelYear": {"type": "string"},
+          "price": {"type": "number", "format": "double", "minimum": 0},
+          "odometer": {"type": "integer", "nullable": true},
+          "transmission": {"type": "string", "nullable": true},
+          "auction": {"type": "boolean", "nullable": true},
+          "armored": {"type": "string", "nullable": true},
+          "sellerCity": {"type": "string", "nullable": true},
+          "sellerState": {"type": "string", "nullable": true},
+          "sellerType": {"type": "string", "nullable": true},
+          "listingUrl": {"type": "string", "format": "uri", "nullable": true}
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["code", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    },
+    "responses": {
+      "InvalidRequest": {
+        "description": "The request body or parameters are invalid.",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "VehicleNotFound": {
+        "description": "The requested vehicle combination was not found.",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "VehicleProviderUnavailable": {
+        "description": "The configured vehicle provider is unavailable or returned an unexpected response.",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "InternalServerError": {
+        "description": "Unexpected error while processing the request.",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      }
+    }
+  }
+}

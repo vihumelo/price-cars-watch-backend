@@ -1,0 +1,134 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "README.md"
+      - "**/*.md"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: prices-car-watch-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'sa-east-1' }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  provision-ecr:
+    name: Provision ECR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+
+      - name: Apply ECR infrastructure
+        working-directory: infra/ecr
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform apply -auto-approve -input=false
+
+  publish-images:
+    name: Build and publish images
+    needs: provision-ecr
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - service: vehicles
+            repository: prices-car-watch-vehicles
+          - service: subscriptions
+            repository: prices-car-watch-subscriptions
+          - service: monitoring
+            repository: prices-car-watch-monitoring
+          - service: notifications
+            repository: prices-car-watch-notifications
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: ${{ matrix.repository }}
+          SERVICE: ${{ matrix.service }}
+        run: |
+          IMAGE_URI="$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker build --platform linux/amd64 --provenance=false --sbom=false \
+            --file "services/$SERVICE/Dockerfile" \
+            --tag "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+
+  deploy-application:
+    name: Deploy application
+    needs: publish-images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+
+      - name: Deploy application infrastructure
+        working-directory: infra/application
+        env:
+          TF_VAR_vehicle_provider: ${{ vars.VEHICLE_PROVIDER }}
+          TF_VAR_frontend_base_url: ${{ vars.FRONTEND_BASE_URL }}
+          TF_VAR_mailjet_confirmation_template_id: ${{ vars.MAILJET_CONFIRMATION_TEMPLATE_ID }}
+          TF_VAR_mailjet_new_listings_template_id: ${{ vars.MAILJET_NEW_LISTINGS_TEMPLATE_ID }}
+          TF_VAR_mailjet_sender_email: ${{ secrets.MAILJET_SENDER_EMAIL }}
+          TF_VAR_mailjet_sender_name: ${{ vars.MAILJET_SENDER_NAME }}
+        run: |
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          REGISTRY="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform apply -auto-approve -input=false \
+            -var="vehicles_image_uri=$REGISTRY/prices-car-watch-vehicles:$IMAGE_TAG" \
+            -var="subscriptions_image_uri=$REGISTRY/prices-car-watch-subscriptions:$IMAGE_TAG" \
+            -var="monitoring_image_uri=$REGISTRY/prices-car-watch-monitoring:$IMAGE_TAG" \
+            -var="notifications_image_uri=$REGISTRY/prices-car-watch-notifications:$IMAGE_TAG"
