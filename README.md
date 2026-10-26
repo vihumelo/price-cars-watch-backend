@@ -66,10 +66,11 @@ GitHub Actions automates validation and deployment:
 
 ## Deployment Prerequisites
 
-The deployment pipeline requires:
+Before deploying, configure:
 
-- An S3 bucket for the Terraform remote state. Set its name as the GitHub Actions variable `TF_STATE_BUCKET`.
-- An AWS IAM role configured with GitHub as an OIDC provider and trusted by this repository. Set its ARN as the GitHub Actions secret `AWS_ROLE_TO_ASSUME`.
-- Optionally, set the GitHub Actions variable `AWS_REGION`. It defaults to `sa-east-1`.
+- An S3 bucket for Terraform state (`TF_STATE_BUCKET`) and a GitHub OIDC IAM role with deployment permissions (`AWS_ROLE_TO_ASSUME`).
+- GitHub Actions variables: `VEHICLE_PROVIDER`, `FRONTEND_BASE_URL`, `MAILJET_CONFIRMATION_TEMPLATE_ID`, `MAILJET_NEW_LISTINGS_TEMPLATE_ID`, and `MAILJET_SENDER_NAME`.
+- The GitHub Actions secret `MAILJET_SENDER_EMAIL`.
+- An AWS Secrets Manager secret named `prices-car-watch/notifications/mailjet` containing `MAILJET_API_KEY` and `MAILJET_SECRET_KEY`.
 
-Once these prerequisites and the required deployment variables are configured, pushing the project to `main` triggers the pipeline, which provisions the infrastructure, builds and publishes the service images, and deploys the complete application automatically.
+The frontend referenced by `FRONTEND_BASE_URL` must be hosted separately. With these prerequisites configured, a push to `main` provisions and deploys the backend automatically.

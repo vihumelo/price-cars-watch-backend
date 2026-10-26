@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'sa-east-1' }}
+  AWS_REGION: sa-east-1
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
