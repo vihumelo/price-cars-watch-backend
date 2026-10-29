@@ -31,6 +31,28 @@ resource "aws_apigatewayv2_stage" "default" {
   name        = "$default"
   auto_deploy = true
 
+  # Portfolio deployment: protect the unauthenticated browser-facing routes
+  # without throttling the IAM-protected calls made between services.
+  dynamic "route_settings" {
+    for_each = toset([
+      "POST /subscriptions",
+      "GET /subscriptions/{subscriptionId}/confirm",
+      "GET /subscriptions/{subscriptionId}",
+      "DELETE /subscriptions/{subscriptionId}",
+      "GET /vehicles/makes",
+      "GET /vehicles/makes/{makeId}/models",
+      "GET /vehicles/makes/{makeId}/models/{modelId}/versions",
+      "GET /vehicles/makes/{makeId}/models/{modelId}/versions/{versionId}/years",
+      "GET /vehicles/makes/{makeId}/models/{modelId}/versions/{versionId}/years/{yearId}",
+    ])
+
+    content {
+      route_key              = route_settings.value
+      throttling_burst_limit = 2
+      throttling_rate_limit  = 1
+    }
+  }
+
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway.arn
     format = jsonencode({
